@@ -165,7 +165,7 @@ module Net::HTTP::Pipeline
   # Raises an exception if the connection is not pipeline-capable or if the
   # HTTP session has not been started.
 
-  def pipeline requests, &block # :yields: response
+  def pipeline requests, delay, &block # :yields: response
     responses = []
 
     raise Error.new('Net::HTTP not started', requests, responses) unless
@@ -179,7 +179,7 @@ module Net::HTTP::Pipeline
 
     until requests.empty? do
       begin
-        in_flight = pipeline_send requests
+        in_flight = pipeline_send requests, delay
 
         pipeline_receive in_flight, responses, &block
       rescue Net::HTTP::Pipeline::ResponseError => e
@@ -347,7 +347,7 @@ module Net::HTTP::Pipeline
   # If a non-idempotent request is encountered after an idempotent request it
   # will not be sent.
 
-  def pipeline_send requests
+  def pipeline_send requests, delay
     in_flight = []
 
     while req = requests.shift do
@@ -363,6 +363,8 @@ module Net::HTTP::Pipeline
       in_flight << req
 
       break unless idempotent
+
+      sleep(delay)
     end
 
     in_flight
